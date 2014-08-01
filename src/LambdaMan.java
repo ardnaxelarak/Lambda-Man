@@ -56,7 +56,6 @@ public class LambdaMan extends Entity
 		Direction attempt = null;
 		if (ai != null)
 			attempt = ai.getDirection(game);
-		System.err.println(attempt);
 		return attempt;
 	}
 
