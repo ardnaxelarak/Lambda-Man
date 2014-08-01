@@ -12,8 +12,8 @@
 		<javac includeantruntime="false" srcdir="${src}" destdir="${build}"/>
 	</target>
 
-	<target name="run">
-		<java classname="Game">
+	<target name="run" depends="compile">
+		<java classname="Display">
 			<arg value="${files}/map0.map"/>
 			<classpath>
 				<pathelement path="${build}"/>

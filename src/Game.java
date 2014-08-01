@@ -1,141 +1,48 @@
 import java.io.IOException;
-import java.io.File;
-import java.io.FileReader;
-import java.io.BufferedReader;
+import java.util.List;
 import java.util.LinkedList;
 
 public class Game
 {
-	private MapContent[][] map;
+	private GameMap map;
 	private int level, ticknum;
-	private Location fruitloc;
 	private LambdaMan player;
 	private Ghost[] ghosts;
+	private List<GameListener> listeners;
 
-	private void loadMap(String[] mapString)
+	public Game(GameMap map)
 	{
-		int rows = mapString.length, cols = mapString[0].length();
-		boolean rowWarning = false;
-		fruitloc = null;
-		char[][] mapPieces = new char[rows][];
-		player = null;
-		LinkedList<Ghost> ghostList = new LinkedList<Ghost>();
-		for (int i = 0; i < rows; i++)
-		{
-			mapPieces[i] = mapString[i].toCharArray();
-			if (mapString[i].length() != cols && !rowWarning)
-			{
-				System.err.println("WARNING: Not all rows in the map are the same length. Adding extra walls to compensate.");
-				rowWarning = true;
-			}
-			if (mapString[i].length() > cols)
-				cols = mapString[i].length();
-		}
-
-		map = new MapContent[rows][cols];
-		int j;
-		for (int i = 0; i < rows; i++)
-		{
-		 	for (j = 0; j < mapPieces[i].length; j++)
-			{
-				switch (mapPieces[i][j])
-				{
-					case '#':
-						map[i][j] = MapContent.WALL;
-						break;
-					case ' ':
-						map[i][j] = MapContent.EMPTY;
-						break;
-					case '.':
-						map[i][j] = MapContent.PILL;
-						break;
-					case 'o':
-						map[i][j] = MapContent.POWER_PILL;
-						break;
-					case '%':
-						if (fruitloc != null)
-						{
-							System.err.println("WARNING: Multiple fruit locations found. Transforming extra fruit starting locations into empty.");
-							map[i][j] = MapContent.EMPTY;
-						}
-						else
-						{
-							map[i][j] = MapContent.FRUIT;
-							fruitloc = new Location(i, j);
-						}
-						break;
-					case '\\':
-						if (player != null)
-						{
-							System.err.println("WARNING: Multiple starting locations found for Lambda-Man. Transforming extra starting locations into empty.");
-							map[i][j] = MapContent.EMPTY;
-						}
-						else
-						{
-							map[i][j] = MapContent.LAMBDA_MAN;
-							player = new LambdaMan(i, j);
-						}
-						break;
-					case '=':
-						map[i][j] = MapContent.GHOST;
-						int index = ghostList.size();
-						ghostList.add(new Ghost(index, i, j, 130 + (index % 4) * 2, 195 + (index % 4) * 3));
-						break;
-					default:
-						System.err.printf("WARNING: Unknown map tile \'%s\'. Replacing with wall.\n", mapPieces[i][j]);
-						map[i][j] = MapContent.WALL;
-						break;
-				}
-			}
-			while (j < cols)
-			{
-				map[i][j++] = MapContent.WALL;
-			}
-		}
-		level = (rows * cols - 1) / 100;
+		this.map = map;
+		level = (map.getRows() * map.getCols() - 1) / 100;
 		ticknum = 1;
-		ghosts = new Ghost[ghostList.size()];
-		ghosts = ghostList.toArray(ghosts);
+		player = new LambdaMan(map.getPlayerLoc());
+		int num = map.getNumGhosts();
+		ghosts = new Ghost[num];
+		for (int i = 0; i < num; i++)
+			ghosts[i] = new Ghost(i, map.getGhostLoc(i), 130 + (i % 4) * 2, 195 + (1 % 4) * 3);
+		listeners = new LinkedList<GameListener>();
 	}
 
-	public Game(String[] mapString)
+	public Game(String[] mapStrings)
 	{
-		loadMap(mapString);
+		this(new GameMap(mapStrings));
 	}
 
 	public Game(String filename) throws IOException
 	{
-		BufferedReader br = null;
-		try
-		{
-			br = new BufferedReader(new FileReader(new File(filename)));
-			LinkedList<String> lineList = new LinkedList<String>();
-			String line;
-			while ((line = br.readLine()) != null)
-			{
-				lineList.add(line);
-			}
-			String[] lines = new String[lineList.size()];
-			lines = lineList.toArray(lines);
-			loadMap(lines);
-		}
-		finally
-		{
-			if (br != null)
-				br.close();
-		}
+		this(GameMap.fromFile(filename));
 	}
 
 	public void printMap()
 	{
-		int rows = map.length;
-		int cols = map[0].length;
+		int rows = map.getRows();
+		int cols = map.getCols();
 		char[][] mapout = new char[rows][cols];
 		for (int i = 0; i < rows; i++)
 		{
 			for (int j = 0; j < cols; j++)
 			{
-				mapout[i][j] = map[i][j].getMapChar();
+				mapout[i][j] = map.getTile(i, j).getMapChar();
 			}
 		}
 		for (int i = 0; i < ghosts.length; i++)
@@ -166,6 +73,31 @@ public class Game
 			Game g = new Game(args[0]);
 			g.printMap();
 		}
+	}
+
+	public GameMap getMap()
+	{
+		return map;
+	}
+
+	public Location getPlayerLoc()
+	{
+		return player.getLoc();
+	}
+
+	public Location getGhostLoc(int index)
+	{
+		return ghosts[index].getLoc();
+	}
+
+	public int getNumGhosts()
+	{
+		return ghosts.length;
+	}
+
+	public void addListener(GameListener listener)
+	{
+		listeners.add(listener);
 	}
 
 	public class LambdaMan
@@ -208,6 +140,11 @@ public class Game
 		{
 			return lives;
 		}
+
+		public Location getLoc()
+		{
+			return loc;
+		}
 	}
 
 	public class Ghost
@@ -241,5 +178,17 @@ public class Game
 			dir = Direction.DOWN;
 			nextMove = 1 + standardSpeed;
 		}
+
+		public Location getLoc()
+		{
+			return loc;
+		}
 	}
+}
+
+interface GameListener
+{
+	public void playerMoved(int oldy, int oldx, int newy, int newx);
+	public void ghostMoved(int index, int oldy, int oldx, int newy, int newx);
+	public void fruitChanged(boolean visible);
 }
