@@ -135,11 +135,29 @@ public class GameMap
 		return map[y][x];
 	}
 
+	public MapContent getTile(Location l)
+	{
+		if (l.getY() < 0 || l.getY() >= map.length)
+			return MapContent.WALL;
+		if (l.getX() < 0 || l.getX() >= map[l.getY()].length)
+			return MapContent.WALL;
+		return map[l.getY()][l.getX()];
+	}
+
 	public void setTile(int y, int x, MapContent value)
 	{
 		map[y][x] = value;
 		for (MapListener listener : listeners)
 			listener.mapChanged(y, x, value);
+	}
+
+	public void setTile(Location l, MapContent value)
+	{
+		if (l.getY() < 0 || l.getY() >= map.length)
+			return;
+		if (l.getX() < 0 || l.getX() >= map[l.getY()].length)
+			return;
+		setTile(l.getY(), l.getX(), value);
 	}
 
 	public int getRows()

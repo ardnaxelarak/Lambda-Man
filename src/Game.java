@@ -8,19 +8,17 @@ public class Game
 	private int level, ticknum;
 	private LambdaMan player;
 	private Ghost[] ghosts;
-	private List<GameListener> listeners;
 
 	public Game(GameMap map)
 	{
 		this.map = map;
 		level = (map.getRows() * map.getCols() - 1) / 100;
 		ticknum = 1;
-		player = new LambdaMan(map.getPlayerLoc());
+		player = new LambdaMan(this, map.getPlayerLoc());
 		int num = map.getNumGhosts();
 		ghosts = new Ghost[num];
 		for (int i = 0; i < num; i++)
-			ghosts[i] = new Ghost(i, map.getGhostLoc(i), 130 + (i % 4) * 2, 195 + (1 % 4) * 3);
-		listeners = new LinkedList<GameListener>();
+			ghosts[i] = new Ghost(this, i, map.getGhostLoc(i), 130 + (i % 4) * 2, 195 + (1 % 4) * 3);
 	}
 
 	public Game(String[] mapStrings)
@@ -75,6 +73,70 @@ public class Game
 		}
 	}
 
+	public void runGame()
+	{
+		int state;
+		while ((state = step()) == 0)
+		{
+			try
+			{
+				Thread.sleep(5);
+			} catch (InterruptedException e) {
+			}
+			if (ticknum >= 127 * map.getRows() * map.getCols() * 16)
+				player.setLives(0);
+		}
+	}
+
+	private int step()
+	{
+		if (player.getNextMove() == ticknum)
+			player.takeMove();
+		for (Ghost g : ghosts)
+			if (g.getNextMove() == ticknum)
+				g.takeMove();
+
+		// fright mode deactivate, fruit appear/disappear
+
+		// eat stuff
+		switch (map.getTile(player.getLoc()))
+		{
+			case PILL:
+				player.incrementScore(10);
+				map.setTile(player.getLoc(), MapContent.EMPTY);
+				break;
+			case POWER_PILL:
+				player.incrementScore(50);
+				map.setTile(player.getLoc(), MapContent.EMPTY);
+				// add vitality, activate fright, et cetera
+				break;
+		}
+
+		// kill ghost/player
+
+		// check for cleared level
+
+		// check for no lives remaining
+		if (player.getLives() <= 0)
+			return 1; // player died
+
+		ticknum++;
+
+		return 0;
+	}
+
+	public void setPlayerAI(AIController ai)
+	{
+		player.setAI(ai);
+	}
+
+	public void setGhostAIs(AIController... ais)
+	{
+		int len = ais.length;
+		for (int i = 0; i < ghosts.length; i++)
+			ghosts[i].setAI(ais[i % len]);
+	}
+
 	public GameMap getMap()
 	{
 		return map;
@@ -95,100 +157,14 @@ public class Game
 		return ghosts.length;
 	}
 
-	public void addListener(GameListener listener)
+	public void addPlayerListener(PlayerListener listener)
 	{
-		listeners.add(listener);
+		player.addListener(listener);
 	}
 
-	public class LambdaMan
+	public void addGhostListener(GhostListener listener)
 	{
-		private int vitality;
-		private Location loc;
-		private Direction dir;
-		private int lives;
-		private int score;
-		private int nextMove;
-		private static final int MOVE_SPEED = 127;
-		private static final int EAT_SPEED = 137;
-
-		public LambdaMan(Location start)
-		{
-			vitality = 0;
-			loc = new Location(start);
-			dir = Direction.DOWN;
-			lives = 3;
-			score = 0;
-			nextMove = 1 + MOVE_SPEED;
-		}
-
-		public LambdaMan(int starty, int startx)
-		{
-			vitality = 0;
-			loc = new Location(starty, startx);
-			dir = Direction.DOWN;
-			lives = 3;
-			score = 0;
-			nextMove = 1 + MOVE_SPEED;
-		}
-
-		public int getScore()
-		{
-			return score;
-		}
-
-		public int getLives()
-		{
-			return lives;
-		}
-
-		public Location getLoc()
-		{
-			return loc;
-		}
+		for (Ghost g : ghosts)
+			g.addListener(listener);
 	}
-
-	public class Ghost
-	{
-		private GhostVitality vitality;
-		private Location loc;
-		private Direction dir;
-		private int nextMove;
-		private int standardSpeed, slowSpeed;
-		private int index;
-
-		public Ghost(int index, Location start,
-					 int standardSpeed, int slowSpeed)
-		{
-			vitality = GhostVitality.STANDARD;
-			this.index = index;
-			loc = new Location(start);
-			this.standardSpeed = standardSpeed;
-			this.slowSpeed = slowSpeed;
-			dir = Direction.DOWN;
-			nextMove = 1 + standardSpeed;
-		}
-		public Ghost(int index, int starty, int startx,
-					 int standardSpeed, int slowSpeed)
-		{
-			vitality = GhostVitality.STANDARD;
-			this.index = index;
-			loc = new Location(starty, startx);
-			this.standardSpeed = standardSpeed;
-			this.slowSpeed = slowSpeed;
-			dir = Direction.DOWN;
-			nextMove = 1 + standardSpeed;
-		}
-
-		public Location getLoc()
-		{
-			return loc;
-		}
-	}
-}
-
-interface GameListener
-{
-	public void playerMoved(int oldy, int oldx, int newy, int newx);
-	public void ghostMoved(int index, int oldy, int oldx, int newy, int newx);
-	public void fruitChanged(boolean visible);
 }

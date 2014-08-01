@@ -9,6 +9,7 @@ import java.io.IOException;
 import javax.imageio.ImageIO;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
+import javax.swing.JLabel;
 
 public class Display extends JFrame
 {
@@ -20,6 +21,7 @@ public class Display extends JFrame
 	private Image[] mapImages;
 	private Image playerImage;
 	private Image[] ghostImages;
+	private JLabel scoreLabel;
 
 	private void loadImages()
 	{
@@ -57,9 +59,13 @@ public class Display extends JFrame
 
 		MultiListener ml = new MultiListener();
 		map.addListener(ml);
-		game.addListener(ml);
+		game.addPlayerListener(ml);
+		game.addGhostListener(ml);
 
 		getContentPane().add(graphicsPanel, BorderLayout.CENTER);
+
+		scoreLabel = new JLabel("Score: 0");
+		getContentPane().add(scoreLabel, BorderLayout.PAGE_END);
 		pack();
 		setVisible(true);
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -75,6 +81,14 @@ public class Display extends JFrame
 		}
 		Image img = mapImages[map.getTile(y, x).getValue()];
 		g.drawImage(img, x * GRID_SIZE, y * GRID_SIZE, GRID_SIZE, GRID_SIZE, null);
+		if (check)
+		{
+			if (game.getPlayerLoc().equals(y, x))
+				paintPlayer(g, false);
+			for (int i = 0; i < game.getNumGhosts(); i++)
+				if (game.getGhostLoc(i).equals(y, x))
+					paintGhost(g, i, false);
+		}
 	}
 
 	private void paintPlayer(Graphics g, boolean clear)
@@ -110,7 +124,10 @@ public class Display extends JFrame
 		else
 		{
 			Game g = new Game(args[0]);
+			g.setPlayerAI(new RandomAI());
+			g.setGhostAIs(new RandomAI());
 			Display d = new Display(g);
+			g.runGame();
 		}
 	}
 
@@ -134,7 +151,7 @@ public class Display extends JFrame
 		}
 	}
 
-	class MultiListener implements MapListener, GameListener
+	class MultiListener implements MapListener, PlayerListener, GhostListener
 	{
 		@Override
 		public void mapChanged(int y, int x, MapContent value)
@@ -144,7 +161,7 @@ public class Display extends JFrame
 		}
 
 		@Override
-		public void playerMoved(int oldy, int oldx, int newy, int newx)
+		public void playerMoved(LambdaMan player, int oldy, int oldx)
 		{
 			Graphics g = graphicsPanel.getGraphics();
 			paintPlayer(g, false);
@@ -152,14 +169,25 @@ public class Display extends JFrame
 		}
 
 		@Override
-		public void ghostMoved(int index, int oldy, int oldx, int newy, int newx)
+		public void scoreChanged(LambdaMan player)
 		{
-			Graphics g = graphicsPanel.getGraphics();
-			paintGhost(g, index, false);
-			paintTile(g, oldy, oldx, true, true);
+			scoreLabel.setText(String.format("Score: %d", player.getScore()));
 		}
 
 		@Override
+		public void livesChanged(LambdaMan player)
+		{
+		}
+
+		@Override
+		public void ghostMoved(Ghost ghost, int oldy, int oldx)
+		{
+			Graphics g = graphicsPanel.getGraphics();
+			paintGhost(g, ghost.getIndex(), false);
+			paintTile(g, oldy, oldx, true, true);
+		}
+
+//		@Override
 		public void fruitChanged(boolean visible)
 		{
 			Graphics g = graphicsPanel.getGraphics();

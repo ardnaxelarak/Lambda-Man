@@ -1,22 +1,94 @@
-public class LambdaMan
-{
-	private int vitality;
-	private int xloc, yloc;
-	private Direction dir;
-	private int lives;
-	private int score;
-	private int nextMove;
-	private static final int MOVE_SPEED = 127;
-	private static final int EAT_SPEED = 137;
+import java.util.LinkedList;
+import java.util.List;
 
-	public LambdaMan(int startingX, int startingY)
+public class LambdaMan extends Entity
+{
+	private int vitality, lives, score;
+	private static final int MOVE_SPEED = 127;
+	private static final int EAT_SPEED = 127;
+	private List<PlayerListener> listeners;
+
+	public LambdaMan(Game game, int starty, int startx)
 	{
+		super(game, starty, startx, MOVE_SPEED, EAT_SPEED);
 		vitality = 0;
-		xloc = startingX;
-		yloc = startingY;
-		dir = Direction.DOWN;
 		lives = 3;
 		score = 0;
-		nextMove = 1 + MOVE_SPEED;
+		listeners = new LinkedList<PlayerListener>();
+	}
+
+	public LambdaMan(Game game, Location start)
+	{
+		this(game, start.getY(), start.getX());
+	}
+
+	public int getLives()
+	{
+		return lives;
+	}
+
+	public void setLives(int value)
+	{
+		lives = value;
+		for (PlayerListener l : listeners)
+			l.livesChanged(this);
+	}
+
+	public int getScore()
+	{
+		return score;
+	}
+
+	public void addListener(PlayerListener listener)
+	{
+		listeners.add(listener);
+	}
+
+	public void incrementScore(int value)
+	{
+		score += value;
+		for (PlayerListener l : listeners)
+			l.scoreChanged(this);
+	}
+
+	private Direction determineMove()
+	{
+		Direction attempt = null;
+		if (ai != null)
+			attempt = ai.getDirection(game);
+		System.err.println(attempt);
+		return attempt;
+	}
+
+	private void processMove(Direction d)
+	{
+		int oldx = loc.getX(), oldy = loc.getY();
+		if (d == null)
+			d = dir;
+		Location newloc = loc.displace(d.getDisplacement());
+		MapContent tile = game.getMap().getTile(newloc);
+		switch (tile)
+		{
+			case WALL:
+				nextMove += normalSpeed;
+				return;
+			case EMPTY:
+			case LAMBDA_MAN:
+			case GHOST:
+				nextMove += normalSpeed;
+				break;
+			case PILL:
+				nextMove += slowSpeed;
+				break;
+		}
+		loc = newloc;
+		dir = d;
+		for (PlayerListener l : listeners)
+			l.playerMoved(this, oldy, oldx);
+	}
+
+	public void takeMove()
+	{
+		processMove(determineMove());
 	}
 }

@@ -1,3 +1,7 @@
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
+
 public enum Direction
 {
 	UP(0, -1, 0),
@@ -38,5 +42,27 @@ public enum Direction
 			default:
 				return null;
 		}
+	}
+
+	public Direction getOpposite()
+	{
+		return Direction.fromValue((value + 2) % 4);
+	}
+
+	public static List<Direction> getOrder(Direction cur, Direction desired)
+	{
+		LinkedList<Direction> list = new LinkedList<Direction>();
+		list.addLast(UP);
+		list.addLast(RIGHT);
+		list.addLast(DOWN);
+		list.addLast(LEFT);
+		if (list.remove(cur))
+			list.addFirst(cur);
+		if (desired != null)
+			if (list.remove(desired))
+				list.addFirst(desired);
+		if (list.remove(cur.getOpposite()))
+			list.addLast(cur.getOpposite());
+		return list;
 	}
 }

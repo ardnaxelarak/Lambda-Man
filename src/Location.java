@@ -22,6 +22,17 @@ public class Location
 		return displace(l.y, l.x);
 	}
 
+	public void displaceBy(int y, int x)
+	{
+		this.y += y;
+		this.x += x;
+	}
+
+	public void displaceBy(Location l)
+	{
+		displaceBy(l.y, l.x);
+	}
+
 	public int getX()
 	{
 		return x;
@@ -30,5 +41,10 @@ public class Location
 	public int getY()
 	{
 		return y;
+	}
+
+	public boolean equals(int y, int x)
+	{
+		return this.y == y && this.x == x;
 	}
 }
